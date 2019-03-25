@@ -1,0 +1,18 @@
+[DEFAULT]
+ignoreip = {{ f2bIgnoreIP | join(' ') }}
+bantime  = {{ f2bBanTime }}
+findtime  = 600
+maxretry = {{ f2bRetries }}
+banaction = firewallcmd-ipset
+backend = systemd
+
+[sshd]
+enabled = true
+port    = {{ sshPort }}
+enabled = {{ f2bEnabled }}
+
+[nginx-http-auth]
+enabled = {{ f2bEnabled }}
+filter = nginx-http-auth
+port = {{ nginxPort }}
+logpath = /var/log/nginx/error.log

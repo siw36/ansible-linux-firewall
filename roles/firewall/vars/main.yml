@@ -1,0 +1,40 @@
+---
+hostname: gw.replicas.lan
+
+# LAN interface
+lanInterface: ens192
+lanIP: 192.168.0.1
+lanSuffix: 16
+
+# WAN interface
+wanMAC: 00:50:56:00:36:62
+wanInterface: ens224
+wanIP: 95.216.39.156
+wanSuffix: 26
+wanGW: 95.216.39.129
+
+# fail2ban
+sshPort: 22
+enableF2B: true
+
+# DHCP server configuration LAN
+subnet: 192.168.0.0
+netmask: 255.255.0.0
+rangeFrom: 192.168.1.0
+rangeTo: 192.168.1.255
+nameServers: 192.168.0.1,ns1.replicas.io,1.1.1.1
+domainName: replicas.lan
+routers: 192.168.0.1
+broadcast: 192.168.255.255
+defaultLease: 600
+maxLease: 7200
+
+# DHCP server configuration WAN (because the service gets confused when its not mentioned)
+wanSubnet: 95.216.39.128
+wanNetmask: 255.255.255.192
+
+# Prometheus monitoring
+enableProm: true
+
+# Reboot at the end
+reboot: false

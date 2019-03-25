@@ -1,0 +1,8 @@
+---
+natRules:
+  - comment: ""
+    protocol: tcp
+    portIn: 123
+    destAddr: 1.1.1.1
+    portOut: 123
+    state: present

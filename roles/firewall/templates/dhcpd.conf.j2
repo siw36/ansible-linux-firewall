@@ -1,0 +1,19 @@
+# dhcpd.conf
+
+authoritative;
+log-facility local7;
+
+subnet {{ subnet }} netmask {{ netmask }} {
+  range {{ rangeFrom }} {{ rangeTo }};
+  option domain-name-servers {{ nameServers }};
+  option domain-name "{{ domainName }}";
+  option routers {{ routers }};
+  option broadcast-address {{ broadcast }};
+  default-lease-time {{ defaultLease }};
+  max-lease-time {{ maxLease }};
+}
+
+# WAN subnet
+# Because the service will get confused when not all of the attached interfaces have a configuration
+subnet {{ wanSubnet }} netmask {{ wanNetmask }} {
+}

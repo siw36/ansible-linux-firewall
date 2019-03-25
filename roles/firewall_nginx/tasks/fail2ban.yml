@@ -1,0 +1,25 @@
+---
+- name: Install epel followed by fail2ban
+  yum:
+    name: "{{ item }}"
+    state: latest
+  loop:
+    - https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+    - fail2ban
+    - fail2ban-systemd
+
+- name: Render and apply the fail2ban config file
+  template:
+    src: templates/jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    mode: 0644
+    owner: root
+    group: root
+
+- name: Copy the nginx auth filter for f2b to target
+  copy:
+    src: files/nginx-http-auth.conf
+    dest: /etc/fail2ban/filter.d/
+    mode: 0644
+    owner: root
+    group: root

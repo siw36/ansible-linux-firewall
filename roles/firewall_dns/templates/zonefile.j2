@@ -1,0 +1,57 @@
+; BIND db file for {{ item.zone }}
+
+$ORIGIN {{ item.zone }}.
+$TTL 3600
+
+@       IN      SOA     {{ (item.nsRecords|first).record }}.{{ item.zone }}. {{ item.zoneAdmin }}.{{ item.zone }}. (
+                        {{ cDate.stdout }} ; Serial
+                        28800 ; Refresh
+                        7200 ; Retry
+                        28800 ; Expire
+                        10800 ; Negative Cache TTL
+)
+;
+
+; NS RECORDS
+{% if (item.nsRecords is defined) and (item.nsRecords|length > 0) %}
+{% for ns in item.nsRecords %}
+@ IN NS {{ ns.record }}.{{ ns.value }}.
+{% endfor %}
+{% endif %}
+
+; MX RECORDS
+{% if (item.mxRecords is defined) and (item.mxRecords|length > 0) %}
+{% for mx in item.mxRecords %}
+@ IN MX {{ mx.record }}.{{ mx.value }}.
+{% endfor %}
+{% endif %}
+
+; TXT RECORDS
+{% if (item.txtRecords is defined) and (item.txtRecords|length > 0) %}
+{% for txt in item.txtRecords %}
+{{ txt.record }} IN TXT "{{ txt.value }}"
+{% endfor %}
+{% endif %}
+
+; A RECORDS
+@ IN A {{ item.zoneIP }}
+{% if (item.aRecords is defined) and (item.aRecords|length > 0) %}
+{% for ns in item.aRecords %}
+{{ ns.record }} IN A {{ ns.value }}
+{% endfor %}
+{% endif %}
+
+; SUB DOMAIN DEFINITIONS
+{% if (item.subDomains is defined) and (item.subDomains|length > 0) %}
+{% for sub in item.subDomains %}
+; SUB DOMAIN DEFINITION: {{ sub.name }}
+$ORIGIN {{ sub.name }}.{{ sub.zone }}.
+{% for entry in sub.records %}
+{{ entry.record }} IN A {{ entry.value }}
+{% endfor %}
+{% endfor %}
+{% endif %}
+
+{% for key in keyNames.stdout_lines %}
+$INCLUDE {{ key }}
+{% endfor %}

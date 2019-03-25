@@ -1,0 +1,64 @@
+---
+# - name: Check if all vars are set
+#   fail:
+#     msg: "The required variable {{ item }} is not defined."
+#   loop:
+#     - lanInterface
+#     - aRecords
+#   when: item is not defines or "item" == ""
+
+- name: Install packages
+  yum:
+    name: ['bind', 'bind-utils', 'haveged']
+    state: latest
+
+- name: Start haveged
+  systemd:
+    name: haveged
+    state: started
+    enabled: true
+
+- name: Check to see if pip is already installed
+  command: "pip --version"
+  ignore_errors: true
+  register: pip_is_installed
+  changed_when: false
+
+- block:
+  - name: Download pip
+    get_url:
+      url: https://bootstrap.pypa.io/get-pip.py
+      dest: /tmp
+
+  - name: Install pip
+    command: "python /tmp/get-pip.py"
+
+  - name: Delete pip installation script
+    file:
+      state: absent
+      path: /tmp/get-pip.py
+  when: pip_is_installed.rc != 0
+
+- name: Make sure dnspython is installed
+  pip:
+    name: dnspython
+    state: latest
+
+- name: Apply DNSsec configuration
+  include_tasks: dnssec.yml
+  loop: "{{ zones }}"
+
+- name: Configure the named.conf file
+  template:
+    src: templates/named.conf.j2
+    dest: /etc/named.conf
+    owner: root
+    group: named
+    mode: 0640
+    force: true
+
+- name: Restart bind service
+  systemd:
+    name: named
+    enabled: true
+    state: restarted

@@ -1,0 +1,7 @@
+---
+- name: Install and apply nginx configs
+  hosts: firewall
+  gather_facts: true
+  become: true
+  roles:
+    - firewall_nginx

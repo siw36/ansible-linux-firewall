@@ -1,0 +1,27 @@
+---
+- name: Nginx installation
+  include_tasks: nginx.yml
+  become: true
+
+- name: Fail2Ban installation
+  include_tasks: fail2ban.yml
+  become: true
+
+- name: Iptables rule configuration
+  include_tasks: iptables.yml
+  become: true
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: true
+  become: true
+
+- name: Start and enable systemd services
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+    enabled: true
+  become: true
+  loop:
+    - nginx
+    - fail2ban

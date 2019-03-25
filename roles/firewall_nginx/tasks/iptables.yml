@@ -1,0 +1,21 @@
+---
+- name: Accept Nginx traffic in configured port from WAN
+  iptables:
+    chain: INPUT
+    in_interface: "{{ wanInterface }}"
+    destination_port: "{{ nginxPort }}"
+    protocol: tcp
+    jump: ACCEPT
+    comment: "Allow nginx traffic on port {{ nginxPort }} originating from WAN network"
+    action: insert
+
+- name: Accept Nginx traffic on port 80 from WAN
+  iptables:
+    chain: INPUT
+    in_interface: "{{ wanInterface }}"
+    destination_port: 80
+    protocol: tcp
+    jump: ACCEPT
+    comment: Allow nginx traffic on port 80 originating from WAN network
+    action: insert
+  when: nginxPort80Forward

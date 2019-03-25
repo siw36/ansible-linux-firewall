@@ -1,0 +1,7 @@
+---
+- name: Apply firewall rules
+  hosts: firewall
+  gather_facts: true
+  become: true
+  roles:
+    - firewall_dns

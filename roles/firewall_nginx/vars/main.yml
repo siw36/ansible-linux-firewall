@@ -1,0 +1,16 @@
+---
+nginxAddress: 95.216.39.156
+nginxPort: 443
+nginxPort80Forward: true
+
+serviceNames:
+  - public: ocp.infra.replicas.io
+    local: https://master0.replicas.lan:8443/console
+
+wanInterface: ens224
+sshPort: 22
+f2bEnabled: true
+f2bRetries: 5
+f2bBanTime: 3600
+f2bIgnoreIP:
+  - 127.0.0.1/32

@@ -1,0 +1,157 @@
+---
+- name: Update all packages to latest
+  yum:
+    name: '*'
+    state: latest
+
+- name: "Ensure that required packages are installed and at latest version"
+  yum:
+    name: "{{ item }}"
+    state: latest
+  loop:
+    - iptables
+    - iptables-services
+    - dhcp
+    - epel-release
+    - NetworkManager-glib
+    - nm-connection-editor
+    - libsemanage-python
+    - policycoreutils-python
+
+- name: Install packages from epel repo
+  yum:
+    name: "{{ item }}"
+    state: latest
+  loop:
+    - fail2ban
+
+- name: Set the hostname
+  hostname:
+    name: "{{ hostname }}"
+
+- name: Configure WAN interface
+  nmcli:
+    conn_name: "{{ wanInterface }}"
+    ifname: "{{ wanInterface }}"
+    type: ethernet
+    ip4: "{{ wanIP }}/{{ wanSuffix }}"
+    gw4: "{{ wanGW }}"
+    dns4:
+      - 1.1.1.1
+      - 8.8.8.8
+    state: present
+    autoconnect: yes
+
+- name: Configure LAN interface
+  nmcli:
+    conn_name: "{{ lanInterface }}"
+    ifname: "{{ lanInterface }}"
+    type: ethernet
+    ip4: "{{ lanIP }}/{{ lanSuffix }}"
+    state: present
+    autoconnect: yes
+
+- name: Set both interfaces to static/manual
+  shell: "nmcli connection mod {{ item }} ipv4.method manual"
+  with_items:
+    - "{{ lanInterface }}"
+    - "{{ wanInterface }}"
+
+- name: Set the MAC address of the WAN interface
+  lineinfile:
+    path: /etc/sysconfig/network-scripts/ifcfg-{{ wanInterface }}
+    regexp: '^MACADDR='
+    line: 'MACADDR={{ wanMAC }}'
+
+- name: Enable IP forwarding
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: 1
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: Enable DHCP on LAN interface
+  lineinfile:
+    path: /etc/sysconfig/dhcpd
+    regexp: '^DHCPDARGS='
+    line: 'DHCPDARGS={{ lanInterface }}'
+
+- name: Ensure kernel modules are present and enabled
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - ip_tables
+    - iptable_nat
+    - ip_conntrack
+    - ip_conntrack_irc
+    - ip_conntrack_ftp
+
+- name: Disable firewalld
+  systemd:
+    name: firewalld
+    state: stopped
+    enabled: false
+    masked: yes
+
+- name: Set the ssh port in sshd_config
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?Port.*'
+    line: 'Port {{ sshPort }}'
+    firstmatch: yes
+
+
+- name: Allow ssh only on lan interface
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?ListenAddress.*'
+    line: 'ListenAddress {{ lanIP }}'
+    firstmatch: yes
+
+- name: Flush iptables
+  iptables:
+    flush: true
+
+- name: Render and copy fail2ban config file to target
+  template:
+    src: templates/jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Render and copy dhcp config file to target
+  template:
+    src: templates/dhcpd.conf.j2
+    dest: /etc/dhcp/dhcpd.conf
+    owner: root
+    group: root
+    mode: 0644
+
+- name: "Enable and restart services"
+  systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: restarted
+  loop:
+    - fail2ban
+    - iptables
+    - ip6tables
+    - dhcpd
+
+- name: Reboot the system to make changes take affect
+  shell: "sleep 5 && reboot"
+  become: yes
+  async: yes
+  poll: no
+  when: reboot == true
+
+- name: Print new connection information
+  debug:
+    msg:
+      - "You need to set the new IP address in the inventory file under the [firewall] group"
+      - "IP: {{ lanIP }}/{{ lanSuffix }}"
+      - "Port: {{ sshPort }}"
+      - "Continue with the firewall_<rule type> roles to make further configurations"

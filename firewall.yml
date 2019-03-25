@@ -1,0 +1,9 @@
+---
+- name: Install and configure the iptables firwewlll
+  hosts: firewall
+  gather_facts: true
+  become: true
+  # vars_files:
+  #   - roles/firewall/vars/nat_rules.yml
+  roles:
+    - firewall

@@ -1,0 +1,58 @@
+options {
+	listen-on port 53 { 127.0.0.1; {{ lanIP }}; {{ wanIP }}; };
+	listen-on-v6 port 53 { ::1; };
+	directory 	"/var/named";
+	dump-file 	"/var/named/data/cache_dump.db";
+	statistics-file "/var/named/data/named_stats.txt";
+	memstatistics-file "/var/named/data/named_mem_stats.txt";
+	recursing-file  "/var/named/data/named.recursing";
+	secroots-file   "/var/named/data/named.secroots";
+	allow-query     { any; };
+	allow-update	{ localhost; };
+	allow-transfer  { localhost; };
+	allow-recursion { 127.0.0.1; {{ lanNet }}; };
+	version "1337";
+
+	dnssec-enable yes;
+	dnssec-validation yes;
+	dnssec-lookaside auto;
+
+	bindkeys-file "/etc/named.iscdlv.key";
+	managed-keys-directory "/var/named/dynamic";
+
+	pid-file "/run/named/named.pid";
+	session-keyfile "/run/named/session.key";
+};
+
+logging {
+        channel default_debug {
+                file "data/named.run";
+                severity dynamic;
+        };
+};
+
+zone "." IN {
+	type hint;
+	file "named.ca";
+};
+
+include "/etc/named.rfc1912.zones";
+include "/etc/named.root.key";
+include "/etc/named.conf.tsigkeys";
+
+{% for item in zones %}
+{% if (item.nsRecords is defined) and (item.nsRecords|length > 0) %}
+acl allow-query-{{ item.zone }} {
+{{ item.allowQueries }}
+};
+acl allow-transfer-{{ item.zone }} {
+{{ item.allowTransfer }}
+};
+zone "{{ item.zone }}" {
+  type master;
+  file "/var/named/{{ item.zone }}.signed";
+  allow-query { "allow-query-{{ item.zone }}"; };
+  allow-transfer { "allow-transfer-{{ item.zone }}"; };
+};
+{% endif %}
+{% endfor %}

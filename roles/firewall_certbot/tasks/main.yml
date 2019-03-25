@@ -1,0 +1,9 @@
+---
+- name: Install required packages
+  yum:
+    name: "{{ item }}"
+    state: latest
+  loop:
+    - epel-release
+    - certbot
+    - python2-certbot-nginx

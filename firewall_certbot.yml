@@ -1,0 +1,7 @@
+---
+- name: Install certbot
+  hosts: firewall
+  gather_facts: true
+  become: true
+  roles:
+    - firewall_certbot

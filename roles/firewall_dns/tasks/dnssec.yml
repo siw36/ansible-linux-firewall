@@ -1,0 +1,42 @@
+---
+- name: Create directories for every zone - DNSsec key
+  file:
+    path: /var/named/{{ item.zone }}-keys
+    state: directory
+
+- name: Check if keys are present (key)
+  shell: ls /var/named/{{ item.zone }}-keys/
+  register: keysPresent
+
+- block:
+    - name: Delete old keys
+      shell: rm -rf /var/named/{{ item.zone }}-keys/*
+
+    - name: Generate DNSsec Zone Signing Key(ZSK)
+      shell: dnssec-keygen -K /var/named/{{ item.zone }}-keys -a NSEC3RSASHA1 -b 2048 -n ZONE {{ item.zone }}
+
+    - name: Generate DNSsec Key Signing Key(KSK)
+      shell: dnssec-keygen -K /var/named/{{ item.zone }}-keys -f KSK -a NSEC3RSASHA1 -b 4096 -n ZONE {{ item.zone }}
+  when: keysPresent.stdout_lines | length < 4 or item.renewKeys
+
+- name: Get key names
+  shell: ls /var/named/{{ item.zone }}-keys/*.key
+  register: keyNames
+
+- name: Get the current timestamp for updating zone files
+  command: date +%Y%m%d%S
+  register: cDate
+
+- name: Apply the zone files
+  template:
+    src: templates/zonefile.j2
+    dest: /var/named/{{ item.zone }}
+    owner: root
+    group: named
+    mode: 0640
+    force: true
+
+- name: Sign the zone files
+  shell: dnssec-signzone -A -3 $(head -c 1000 /dev/random | sha1sum | cut -b 1-16) -N INCREMENT -o {{ item.zone }} -t ../{{ item.zone }}
+  args:
+    chdir: /var/named/{{ item.zone }}-keys/

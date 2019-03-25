@@ -1,0 +1,185 @@
+---
+# - name: Flush iptables
+#   iptables:
+#     flush: true
+
+# - name: Apply NAT rules
+#   iptables:
+#     table: nat
+#     chain: PREROUTING
+#     in_interface: eth0 # set this to matching interface
+#     protocol: "{{ item.protocol }}"
+#     match: "{{ item.protocol }}"
+#     destination_port: "{{ item.portIn }}"
+#     jump: REDIRECT
+#     to_destination: "{{ item.destAddr }}"
+#     to_ports: "{{ item.portOut }}"
+#     comment: "{{ item.comment }}"
+#     state: "{{ item.state }}"
+#     action: insert
+#   loop: "{{ natRules }}"
+#   become: yes
+#   when: natRules|length > 0
+
+- name: Accept icmp traffic from WAN
+  iptables:
+    table: filter
+    chain: INPUT
+    in_interface: "{{ wanInterface }}"
+    protocol: icmp
+    jump: ACCEPT
+    comment: Allow icmp traffic originating from WAN network
+    action: insert
+
+- name: Accept DNS traffic from WAN
+  iptables:
+    table: filter
+    chain: INPUT
+    in_interface: "{{ wanInterface }}"
+    destination_port: 53
+    protocol: "{{ item }}"
+    match: "{{ item }}"
+    jump: ACCEPT
+    comment: Allow DNS traffic originating from WAN network
+    action: insert
+  loop:
+    - "udp"
+    - "tcp"
+
+- name: Accept DNS traffic from LAN
+  iptables:
+    table: filter
+    chain: INPUT
+    in_interface: "{{ lanInterface }}"
+    destination_port: 53
+    protocol: "{{ item }}"
+    match: "{{ item }}"
+    jump: ACCEPT
+    comment: Allow DNS traffic originating from LAN network
+    action: insert
+  loop:
+    - "udp"
+    - "tcp"
+
+# - name: Drop NULL packages
+#   iptables:
+#     table: filter
+#     chain: INPUT
+#     in_interface: "{{ wanInterface }}"
+#     protocol: tcp
+#     jump: DROP
+#     comment: "Drop NULL packages"
+#     state: present
+#     tcp_flags:
+#       flags: ALL
+#       flags_set:
+#         - NONE
+#
+# - name: Drop fragmented packages
+#   iptables:
+#     table: filter
+#     chain: INPUT
+#     in_interface: "{{ wanInterface }}"
+#     protocol: all
+#     jump: DROP
+#     comment: "Drop fragmented packages"
+#     state: present
+#     fragment:
+#
+# - name: Force syn package check
+#   iptables:
+#     table: filter
+#     chain: INPUT
+#     in_interface: "{{ wanInterface }}"
+#     protocol: tcp
+#     jump: DROP
+#     comment: "Force syn package check"
+#     state: present
+#     syn: negate
+#     ctstate: NEW
+#
+# - name: Drop XMAS packages
+#   iptables:
+#     table: filter
+#     chain: INPUT
+#     in_interface: "{{ wanInterface }}"
+#     protocol: tcp
+#     jump: DROP
+#     comment: "Drop XMAS packages"
+#     state: present
+#     tcp_flags:
+#       flags: ALL
+#       flags_set:
+#         - ALL
+
+- name: Allow outgoing nat
+  iptables:
+    table: nat
+    chain: POSTROUTING
+    protocol: all
+    out_interface: "{{ wanInterface }}"
+    jump: MASQUERADE
+    comment: "Allow outgoing nat"
+    state: present
+    action: insert
+  become: yes
+
+- name: Accept traffic on lan interface
+  iptables:
+    table: filter
+    chain: INPUT
+    protocol: all
+    in_interface: "{{ lanInterface }}"
+    jump: ACCEPT
+    comment: "Accept traffic on lan interface"
+    state: present
+    action: insert
+  become: yes
+
+- name: Allow established connection traffic
+  iptables:
+    table: filter
+    chain: INPUT
+    protocol: all
+    in_interface: "{{ wanInterface }}"
+    ctstate: ESTABLISHED,RELATED
+    jump: ACCEPT
+    comment: "Allow established connection traffic"
+    state: present
+    action: insert
+  become: yes
+
+- name: Allow any on loopback
+  iptables:
+    table: filter
+    chain: INPUT
+    in_interface: lo
+    protocol: all
+    jump: ACCEPT
+    comment: "Allow any on loopback"
+    state: present
+    action: insert
+  become: yes
+
+- name: Apply default allow any output rule
+  iptables:
+    table: filter
+    chain: OUTPUT
+    protocol: all
+    jump: ACCEPT
+    comment: "Default allow any outgoing"
+    state: present
+    action: append
+  become: yes
+
+- name: Apply default deny any input rules
+  iptables:
+    table: filter
+    chain: INPUT
+    in_interface: "{{ wanInterface }}"
+    protocol: all
+    jump: DROP
+    comment: "Default deny any"
+    state: present
+    action: append
+  become: yes
